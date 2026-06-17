@@ -1,6 +1,6 @@
 # ECE531 Term Project: Frequency-Enhanced Camouflaged Object Segmentation
 
-This repository contains the implementation notebook and result files for the ECE531 term project:
+This repository contains the implementation notebook and reproducibility notes for the ECE531 term project:
 
 **Frequency-Enhanced Camouflaged Object Segmentation Using FFT-Based Spatial-Frequency Fusion**
 
@@ -8,7 +8,7 @@ The project investigates whether FFT-based frequency information can improve cam
 
 ## Repository Contents
 
-```
+```text
 ├── ece531-term-project.ipynb
 ├── README.md
 └── requirements.txt
@@ -27,14 +27,17 @@ The complete numerical results of the 13-condition ablation study are reported i
 
 ## Environment
 
-Developed and tested in the Kaggle GPU environment (Tesla T4). Key dependencies:
+Developed and tested in the Kaggle GPU environment using an NVIDIA Tesla T4 GPU. The environment used for the final notebook run was:
 
-- torch 2.10.0, torchvision 0.25.0
-- numpy 2.0.2, pandas 2.3.3
-- opencv-python 4.13.0, albumentations 1.4.0
-- scikit-image, tqdm, matplotlib
-- segmentation-models-pytorch (for the U-Net++ decoder variant)
-- CUDA 12.8
+```text
+torch 2.10.0+cu128
+torchvision 0.25.0+cu128
+numpy 2.0.2
+pandas 2.3.3
+opencv-python 4.13.0
+albumentations 1.4.0
+CUDA 12.8
+GPU: Tesla T4
 
 Install the dependencies with:
 
@@ -42,11 +45,13 @@ Install the dependencies with:
 pip install -r requirements.txt
 ```
 
+For exact package versions, see `requirements.txt`.
+
 ## Dataset Preparation
 
 The datasets are not included due to size limitations. Download the **CAMO** and **COD10K** datasets and arrange them as follows:
 
-```
+```text
 data/
 ├── CAMO/
 │   ├── train/images/
@@ -60,18 +65,20 @@ data/
     └── test/masks/
 ```
 
-Non-camouflaged COD10K samples with empty ground-truth masks are excluded, following the setup described in the paper. After exclusion: CAMO has 1,000 train / 250 test (the test split is used as the validation set), and COD10K has 3,040 train / 2,026 test (held out strictly).
+Non-camouflaged COD10K samples with empty ground-truth masks are excluded, following the setup described in the paper. After exclusion: CAMO has 1,000 train / 250 test images, where the test split is used as the validation set, and COD10K has 3,040 train / 2,026 test images, where the test split is held out strictly.
 
-## Reproduction (Training, Inference, Evaluation)
+## Reproduction: Training, Inference, and Evaluation
 
-The full pipeline is contained in `ece531-term-project.ipynb`. Run the cells top to bottom:
+The full pipeline is contained in `ece531-term-project.ipynb`. Run the cells from top to bottom:
 
-1. **Setup & data:** install/import dependencies, build the FFT frequency maps, and construct the 4-channel datasets and loaders.
-2. **Input-level FFT model — Exp. 4:** train the ResNet18-UNet, select the segmentation threshold on the CAMO validation set (grid 0.30–0.90, step 0.05), and evaluate pixel-level and COD-standard metrics.
-3. **Frequency-Guided Fusion model — Exp. 13:** train and evaluate the attention-modulation variant, then produce the validation-based final-model-selection table.
-4. **Failure analysis:** rank COD10K test images by per-image Dice and generate the hardest-case figure.
+1. **Setup and data preparation:** install/import dependencies, build the FFT frequency maps, and construct the 4-channel datasets and data loaders.
+2. **Input-level FFT model — Exp. 4:** train the ResNet18-UNet, select the segmentation threshold on the CAMO validation set using a grid from 0.30 to 0.90 with a step size of 0.05, and evaluate pixel-level metrics on CAMO validation and COD10K test.
+3. **Frequency-Guided Fusion model — Exp. 13:** train and evaluate the attention-modulation variant, compute COD-standard metrics, and compare it with the validation-selected model.
+4. **Failure analysis:** rank COD10K test images by per-image Dice and generate the hardest-case qualitative figure.
 
-The remaining 11 ablation conditions (Table I in the paper) are reproduced by editing the configuration as described in the **Ablation Experiments** table below (loss function, frequency map, backbone, resolution, augmentation, decoder).
+The remaining 11 ablation conditions reported in Table I of the paper are reproduced by editing the configuration as described in the **Ablation Experiments** table below. These changes involve the loss function, frequency map type, backbone, resolution, augmentation strategy, and decoder design.
+
+The evaluation is implemented inside the notebook rather than as a separate Python script. The final evaluation cells compute Dice, IoU, MAE, threshold-search results, COD-standard metrics, and hardest-case visualizations.
 
 ## Ablation Experiments
 
@@ -95,17 +102,22 @@ The following table explains how each experiment in the paper was produced from 
 
 ## Main Results
 
-Model selection is performed **exclusively on the CAMO validation set**; the COD10K test set is held out strictly and is never used for model selection.
+Model selection is performed **exclusively on the CAMO validation set**. The COD10K test set is held out strictly and is never used for model selection.
 
-| Model                             | CAMO Val Dice | COD10K Test Dice | Notes                                                               |
-| --------------------------------- | ------------: | ---------------: | ------------------------------------------------------------------- |
-| Input-level FFT Fusion (Exp. 4)   |        0.6907 |           0.6470 | Best CAMO validation performance — **selected primary model**.      |
+| Model                             | CAMO Val Dice | COD10K Test Dice | Notes                                                                |
+| --------------------------------- | ------------: | ---------------: | -------------------------------------------------------------------- |
+| Input-level FFT Fusion (Exp. 4)   |        0.6907 |           0.6470 | Best CAMO validation performance — **selected primary model**.       |
 | Frequency-Guided Fusion (Exp. 13) |        0.6591 |           0.6495 | Best held-out COD10K Dice; reported as an observation, not selected. |
 
-Under the validation-only protocol, **Input-level FFT Fusion (Exp. 4)** is the selected primary model. The Frequency-Guided Fusion variant attains a marginally higher COD10K Dice (0.6495 vs. 0.6470), but since COD10K is held out, this is reported as an observation rather than used as a selection criterion.
+Under the validation-only protocol, **Input-level FFT Fusion (Exp. 4)** is the selected primary model. The Frequency-Guided Fusion variant attains a marginally higher COD10K Dice, 0.6495 compared with 0.6470, but since COD10K is held out, this is reported as an observation rather than used as a selection criterion.
 
 ## Notes
 
 Trained model checkpoints are not included due to file size limitations. The notebook saves checkpoints and prediction outputs under the working/output directory when training is run.
 
-Reported results may vary slightly across runs due to random initialization, data augmentation, and GPU non-determinism. For closer reproduction, set `torch.backends.cudnn.deterministic = True` and `torch.backends.cudnn.benchmark = False`.
+Reported results may vary slightly across runs due to random initialization, data augmentation, and GPU non-determinism. For closer reproduction, set:
+
+```python
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
+```
