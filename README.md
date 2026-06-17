@@ -40,6 +40,7 @@ CUDA 12.8
 GPU: Tesla T4
 
 Install the dependencies with:
+```
 
 ```bash
 pip install -r requirements.txt
